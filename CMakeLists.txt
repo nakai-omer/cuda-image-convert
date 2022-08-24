@@ -3,9 +3,6 @@ cmake_minimum_required(VERSION 3.8)
 
 project(cuda_image_convert LANGUAGES CUDA CXX)
 
-message("Omer ${CMAKE_CURRENT_BINARY_DIR}")
-
-
 # Default to C99
 set(CMAKE_C_STANDARD 99)
 
@@ -30,7 +27,7 @@ set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_LIST})
 file(GLOB cudaImageConvertSources *.cpp cuda/*.cu cuda/*.cpp image/*.cpp)
 
 add_library(cuda_image_convert SHARED ${cudaImageConvertSources})
-target_include_directories(cuda_image_convert PUBLIC ${CUDA_INCLUDE_DIRS} $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>)
+target_include_directories(cuda_image_convert PUBLIC ${CUDA_INCLUDE_DIRS} $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 target_link_libraries(cuda_image_convert ${CUDA_nppicc_LIBRARY})	
 
 set_target_properties(cuda_image_convert PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
@@ -41,11 +38,11 @@ include(GNUInstallDirs)
 install( 
   TARGETS cuda_image_convert
   EXPORT cudaImageConvertTargets
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/${PROJECT_NAME}
-  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
-  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
 install(
