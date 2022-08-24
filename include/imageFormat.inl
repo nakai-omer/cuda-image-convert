@@ -127,13 +127,50 @@ inline imageFormat imageFormatFromStr( const char* str )
 		return IMAGE_RGB32F;
 	else if( strcasecmp(str, "rgba32") == 0 )
 		return IMAGE_RGBA32F;
-	else if( strcasecmp(str, "grey8") == 0 )
+	else if( strcasecmp(str, "grey8") == 0 || strcasecmp(str, "gray8") == 0 )
 		return IMAGE_GRAY8;
-	else if( strcasecmp(str, "grey32f") == 0 )
+	else if( strcasecmp(str, "grey32f") == 0 || strcasecmp(str, "gray32f") == 0 )
 		return IMAGE_GRAY32F;
+	else if( strcasecmp(str, "rgb8") == 0 )
+		return IMAGE_RGB8;
+	else if( strcasecmp(str, "rgba8") == 0 )
+		return IMAGE_RGBA8;
+	else if( strcasecmp(str, "rgb32f") == 0 )
+		return IMAGE_RGB32F;
+	else if( strcasecmp(str, "rgba32f") == 0 )
+		return IMAGE_RGBA32F;
+	else if( strcasecmp(str, "bgr8") == 0 )
+		return IMAGE_BGR8;
+	else if( strcasecmp(str, "bgra8") == 0 )
+		return IMAGE_BGRA8;
+	else if( strcasecmp(str, "bgr32f") == 0 )
+		return IMAGE_BGR32F;
+	else if( strcasecmp(str, "bgra32f") == 0 )
+		return IMAGE_BGRA32F;
+	else if( strcasecmp(str, "i420") == 0 )
+		return IMAGE_I420;
+	else if( strcasecmp(str, "yv12") == 0 )
+		return IMAGE_YV12;
+		else if( strcasecmp(str, "nv12") == 0 )
+		return IMAGE_NV12;
+	else if( strcasecmp(str, "uyvy") == 0 )
+		return IMAGE_UYVY;
+	else if( strcasecmp(str, "yuyv") == 0 )
+		return IMAGE_YUYV;
+	else if( strcasecmp(str, "yvyu") == 0 )
+		return IMAGE_YVYU;
+	else if( strcasecmp(str, "bayer-bggr") == 0 )
+		return IMAGE_BAYER_BGGR;
+	else if( strcasecmp(str, "bayer-gbrg") == 0 )
+		return IMAGE_BAYER_GBRG;
+	else if( strcasecmp(str, "bayer-grbg") == 0 )
+		return IMAGE_BAYER_GRBG;
+	else if( strcasecmp(str, "bayer-rggb") == 0 )
+		return IMAGE_BAYER_RGGB;
 
 	return IMAGE_UNKNOWN;
 }
+
 
 
 // imageFormatBaseType

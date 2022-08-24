@@ -1,109 +1,82 @@
 
 cmake_minimum_required(VERSION 3.8)
 
-# determine if cuda-image-format is being built as a submodule inside another repo,
-# or if it's being build standalone (if the later, we need to do some configuration)
-get_directory_property(hasParent PARENT_DIRECTORY)
+project(cuda_image_convert LANGUAGES CUDA CXX)
 
-if(hasParent)
-	message("-- cuda-image-format:  building as submodule, ${hasParent}")
-else()
-	message("-- cuda-image-format:  building as standalone")
-	
-	# standalone project
-	project(cuda-image-format)
-  
-	# -std=gnu++11
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-write-strings")	
-  
-	# setup CUDA
-	set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cuda")
-	find_package(CUDA)
-	message("-- CUDA version: ${CUDA_VERSION}")
+message("Omer ${CMAKE_CURRENT_BINARY_DIR}")
 
-	set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -O3)
 
-	if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-		message("-- CUDA ${CUDA_VERSION} detected (${CMAKE_SYSTEM_PROCESSOR}), enabling SM_53 SM_62")
-		set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62)
+# Default to C99
+set(CMAKE_C_STANDARD 99)
 
-		if(CUDA_VERSION_MAJOR GREATER 9)
-			message("-- CUDA ${CUDA_VERSION} detected (${CMAKE_SYSTEM_PROCESSOR}), enabling SM_72")
-			set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_72,code=sm_72)
-		endif()
-
-		if(CUDA_VERSION_MAJOR GREATER 10)
-			message("-- CUDA ${CUDA_VERSION} detected (${CMAKE_SYSTEM_PROCESSOR}), enabling SM_87")
-			set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; -gencode arch=compute_87,code=sm_87)
-		endif()
-	endif()
-	
-	# setup project output paths
-	set(PROJECT_OUTPUT_DIR  ${PROJECT_BINARY_DIR}/${CMAKE_SYSTEM_PROCESSOR})
-	set(PROJECT_INCLUDE_DIR ${PROJECT_OUTPUT_DIR}/include)
-
-	file(MAKE_DIRECTORY ${PROJECT_INCLUDE_DIR})
-	file(MAKE_DIRECTORY ${PROJECT_OUTPUT_DIR}/bin)
-
-	message("-- system arch:  ${CMAKE_SYSTEM_PROCESSOR}")
-	message("-- output path:  ${PROJECT_OUTPUT_DIR}")
-
-	set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_DIR}/bin)
-	set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_DIR}/lib)
-	set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_OUTPUT_DIR}/lib)
-	
-	# build C/C++ interface
-	include_directories(${PROJECT_INCLUDE_DIR})
-
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 14)
 endif()
 
-# option for enabling/disabling NVMM memory in multimedia stack
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-	set(ENABLE_NVMM_DEFAULT ON)
-else()
-	set(ENABLE_NVMM_DEFAULT OFF)
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-option(ENABLE_NVMM "Enable use of NVMM zero-copy memory in video and camera streaming" ${ENABLE_NVMM_DEFAULT})
-message("-- NVMM zero-copy memory:  ENABLE_NVMM=${ENABLE_NVMM}")
+find_package(CUDA REQUIRED) 
 
-if(ENABLE_NVMM)
-	add_definitions(-DENABLE_NVMM)
-endif()
-
-# additional paths for includes and libraries
-include_directories(${PROJECT_INCLUDE_DIR}/cuda-image-format)
-
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-	link_directories(/usr/lib/aarch64-linux-gnu/tegra)
-endif()
+include(FindCUDA/select_compute_arch)
+CUDA_DETECT_INSTALLED_GPUS(INSTALLED_GPU_CCS_1)
+string(STRIP "${INSTALLED_GPU_CCS_1}" INSTALLED_GPU_CCS_2)
+string(REPLACE " " ";" INSTALLED_GPU_CCS_3 "${INSTALLED_GPU_CCS_2}")
+string(REPLACE "." "" CUDA_ARCH_LIST "${INSTALLED_GPU_CCS_3}")
+set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH_LIST})
 
 # build library
-file(GLOB cudaImageFormatSources *.cpp cuda/*.cu cuda/*.cpp image/*.cpp)
-file(GLOB cudaImageFormatIncludes *.h *.hpp cuda/*.h cuda/*.cuh image/*.h image/*.inl)
+file(GLOB cudaImageConvertSources *.cpp cuda/*.cu cuda/*.cpp image/*.cpp)
 
-cuda_add_library(cuda-image-format SHARED ${cudaImageFormatSources})
-target_link_libraries(cuda-image-format GL GLU GLEW ${CUDA_nppicc_LIBRARY})	
+add_library(cuda_image_convert SHARED ${cudaImageConvertSources})
+target_include_directories(cuda_image_convert PUBLIC ${CUDA_INCLUDE_DIRS} $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>)
+target_link_libraries(cuda_image_convert ${CUDA_nppicc_LIBRARY})	
 
-if(ENABLE_NVMM)
-	target_link_libraries(cuda-image-format nvbuf_utils)
-endif()
+set_target_properties(cuda_image_convert PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
-# transfer all headers to the include directory 
-file(MAKE_DIRECTORY ${PROJECT_INCLUDE_DIR}/cuda-image-format)
+# Export 
+include(GNUInstallDirs)
 
-foreach(include ${cudaImageFormatIncludes})
-	message("-- Copying ${include}")
-	configure_file(${include} ${PROJECT_INCLUDE_DIR}/cuda-image-format COPYONLY)
-endforeach()
-	
-# install headers
-foreach(include ${cudaImageFormatIncludes})
-	install(FILES "${include}" DESTINATION include/cuda-image-format)
-endforeach()
+install( 
+  TARGETS cuda_image_convert
+  EXPORT cudaImageConvertTargets
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/${PROJECT_NAME}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/${PROJECT_NAME}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
+)
 
-# install the shared library
-install(TARGETS cuda-image-format DESTINATION lib EXPORT cuda-image-formatConfig)
+install(
+    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
 
-# install the cmake project, for importing
-install(EXPORT cuda-image-formatConfig DESTINATION share/cuda-image-format/cmake)
+include(CMakePackageConfigHelpers)
+
+# generate the config file that is includes the exports
+configure_package_config_file(cmake/Config.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/cuda_image_convertConfig.cmake"
+  INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake"
+  NO_SET_AND_CHECK_MACRO
+  NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)
+
+# generate the version file for the config file
+write_basic_package_version_file(
+  "cuda_image_convertConfigVersion.cmake"
+  VERSION "${cuda_image_convert_VERSION_MAJOR}.${cuda_image_convert_VERSION_MINOR}"
+  COMPATIBILITY AnyNewerVersion
+)
+
+# install the configuration file
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/cuda_image_convertConfig.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/cuda_image_convertConfigVersion.cmake
+    DESTINATION share/cuda_image_convert/cmake)
+
+install(
+    EXPORT cudaImageConvertTargets
+    DESTINATION share/cuda_image_convert/cmake
+)
